@@ -1,0 +1,897 @@
+,repo_name,title,body,languages,tags
+0,hyper,Allow overriding the default shell on Windows,"**Is your feature request related to a problem? Please describe.**
+On Unix, I can `chsh` the default shell to my preferred shell and Hyper will honor that.
+
+On Windows, there's no way to configure a default shell, as far as I can tell. I've tried overriding the COMSPEC variable, but that has no effect on Hyper.
+
+I'd like not to have to configure the default shell in the configuration file as I'd like to re-use the same configuration file that I use on other platforms.
+
+**Describe the solution you'd like**
+Ideally, the user could configure something in the environment to change the default shell (e.g. DEFAULT_SHELL=%userprofile%/.local/bin/myshell.exe), and Hyper would honor that.
+","['TypeScript', 'Shell', 'NSIS']",allow overriding default shell window feature request relate problem describe unix chsh default shell prefer shell hyper honor window s way configure default shell far tell ve try override comspec variable effect hyper d like configure default shell configuration file d like reuse configuration file use platform describe solution d like ideally user configure environment change default shell eg defaultshelluserprofilelocalbinmyshellexe hyper honor typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+1,hyper,Support forward slashes on Windows,"**Is your feature request related to a problem? Please describe.**
+
+I use some hyper config that I'd like to share across Windows and Unix hosts. Since Windows generally supports forward slashes, it would be nice if Hyper would do the same when on Windows, allowing a config to be shared across platforms. For example:
+
+```
+    shell: '/Users/jaraco/.local/bin/xonsh.exe',
+```
+
+That config doesn't work on Windows and will cause a crash, even if that file exists. Only after translating the forward slashes to backslashes does the application run.
+
+**Describe the solution you'd like**
+
+Better would be to honor forward slashes on all platforms, making the configuration files more portable. That could be done by translating the forward slashes to backslashes before passing them to Windows APIs... or more likely those paths can simply be used with forward slashes and Hyper merely needs to avoid crashing when forward slashes are supplied on Windows.
+","['TypeScript', 'Shell', 'NSIS']",support forward slash window feature request relate problem describe use hyper config d like share windows unix host window generally support forward slash nice hyper window allow config share platform example shell usersjaracolocalbinxonshexe config not work window cause crash file exist translate forward slash backslashe application run describe solution d like well honor forward slash platform make configuration file portable translate forward slash backslashe pass window apis likely path simply forward slash hyper merely need avoid crash forward slash supply window typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+2,hyper,Support home-relative paths by expanding `~`,"**Is your feature request related to a problem? Please describe.**
+I'd like to be able to share my hyper config without having to customize it to each host, but due to corporate restrictions, my username must be different on these different hosts. Therefore, the shell configuration variable must necessarily be different on each machine. For example:
+
+```
+    shell: '\\Users\\jaraco\\.local\\bin\\xonsh.exe',
+```
+
+```
+    shell: '\\Users\\jaraco2\\.local\\bin\\xonsh.exe',
+```
+
+If the hyper configuration would allow for home-relative paths, it would make it possible to declare this config in one way on both hosts:
+
+```
+    shell: '~\\.local\\bin\\xonsh.exe',
+```
+
+
+**Describe the solution you'd like**
+
+For any config item that references a path, allow the path to contain `~` and expand it to the user's home directory.
+","['TypeScript', 'Shell', 'NSIS']",support homerelative path expand feature request relate problem describe d like able share hyper config customize host corporate restriction username different different host shell configuration variable necessarily different machine example shell usersjaracolocalbinxonshexe shell usersjaracolocalbinxonshexe hyper configuration allow homerelative path possible declare config way host shell localbinxonshexe describe solution d like config item reference path allow path contain expand user home directory typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+3,vercel,`vercel link --repo` very slow,"I used `0x` to trace it and its a glob issue.
+
+The issue is `cwd = /`. This is used for globbing which means its searches the entire file system.
+
+```
+export async function getWorkspaces({
+  fs,
+  depth = MAX_DEPTH_TRAVERSE,
+  cwd = '/',
+}: GetWorkspaceOptions): Promise<Workspace[]> {
+  if (depth === 0) return [];
+
+  const workspaceType = await detectWorkspaceManagers({
+    fs,
+    frameworkList: workspaceManagers,
+  });
+
+  if (workspaceType === null) {
+    const directoryContents = await fs.readdir('./');
+    const childDirectories = directoryContents.filter(
+      stat => stat.type === 'dir'
+    );
+
+    return (
+      await Promise.all(
+        childDirectories.map(childDirectory =>
+          getWorkspaces({
+            fs: fs.chdir(childDirectory.path),
+            depth: depth - 1,
+            cwd: posixPath.join(cwd, childDirectory.path),
+          })
+        )
+      )
+    ).flat();
+  }
+
+  return [
+    {
+      type: workspaceType as WorkspaceType,
+      rootPath: cwd,
+    },
+  ];
+}
+
+```
+
+Globs...
+
+```
+repos/**/package.json
+tools/**/package.json
+!**/.vercel/**/package.json
+!**/.venv/**/package.json
+!**/+archive/**/package.json
+!**/static/**/package.json
+```
+
+---
+
+Runs out of memory.
+
+```
+<--- Last few GCs --->
+
+[15380:0x158008000]    86415 ms: Mark-Compact 3997.6 (4131.3) -> 3977.8 (4129.5) MB, pooled: 5 MB, 965.83 / 0.00 ms  (average mu = 0.151, current mu = 0.087) allocation failure; scavenge might not succeed
+[15380:0x158008000]    87460 ms: Mark-Compact 3995.1 (4130.8) -> 3976.6 (4130.8) MB, pooled: 4 MB, 1021.75 / 0.00 ms  (average mu = 0.089, current mu = 0.022) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 0x102bb9270 node::OOMErrorHandler(char const*, v8::OOMDetails const&) [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+ 2: 0x102d94a40 v8::internal::V8::FatalProcessOutOfMemory(v8::internal::Isolate*, char const*, v8::OOMDetails const&) [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+ 3: 0x102f6bb30 v8::internal::Heap::stack() [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+ 4: 0x102f7fcc4 v8::internal::Heap::CollectGarbage(v8::internal::AllocationSpace, v8::internal::GarbageCollectionReason, v8::GCCallbackFlags)::$_7::operator()() const [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+ 5: 0x102f7f57c void heap::base::Stack::SetMarkerAndCallbackImpl<v8::internal::Heap::CollectGarbage(v8::internal::AllocationSpace, v8::internal::GarbageCollectionReason, v8::GCCallbackFlags)::$_7>(heap::base::Stack*, void*, void const*) [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+ 6: 0x1037b4d20 PushAllRegistersAndIterateStack [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+ 7: 0x102f69ef4 v8::internal::Heap::CollectGarbage(v8::internal::AllocationSpace, v8::internal::GarbageCollectionReason, v8::GCCallbackFlags) [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+ 8: 0x102f5f484 v8::internal::HeapAllocator::AllocateRawWithLightRetrySlowPath(int, v8::internal::AllocationType, v8::internal::AllocationOrigin, v8::internal::AllocationAlignment) [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+ 9: 0x102f5fcb0 v8::internal::HeapAllocator::AllocateRawWithRetryOrFailSlowPath(int, v8::internal::AllocationType, v8::internal::AllocationOrigin, v8::internal::AllocationAlignment) [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+10: 0x102f42ca8 v8::internal::Factory::NewFillerObject(int, v8::internal::AllocationAlignment, v8::internal::AllocationType, v8::internal::AllocationOrigin) [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+11: 0x103337bd4 v8::internal::Runtime_AllocateInYoungGeneration(int, unsigned long*, v8::internal::Isolate*) [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+12: 0x1038b601c Builtins_WasmCEntry [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+13: 0x1038b6464 Builtins_StringAdd_CheckNone [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+14: 0x109ba4668
+15: 0x109c3af04
+16: 0x109c8f378
+17: 0x109c98090
+18: 0x109c9e914
+19: 0x109c26514
+20: 0x109c39108
+21: 0x109ca2de4
+22: 0x109c39108
+23: 0x109c9a138
+24: 0x109c27b54
+25: 0x109c27c70
+26: 0x103928658 Builtins_PromiseFulfillReactionJob [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+27: 0x10384d714 Builtins_RunMicrotasks [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+28: 0x10381eaf4 Builtins_JSRunMicrotasksEntry [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+29: 0x102ec483c v8::internal::(anonymous namespace)::Invoke(v8::internal::Isolate*, v8::internal::(anonymous namespace)::InvokeParams const&) [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+30: 0x102ec4ccc v8::internal::(anonymous namespace)::InvokeWithTryCatch(v8::internal::Isolate*, v8::internal::(anonymous namespace)::InvokeParams const&) [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+31: 0x102ec4e08 v8::internal::Execution::TryRunMicrotasks(v8::internal::Isolate*, v8::internal::MicrotaskQueue*) [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+32: 0x102eeed90 v8::internal::MicrotaskQueue::RunMicrotasks(v8::internal::Isolate*) [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+33: 0x102eef530 v8::internal::MicrotaskQueue::PerformCheckpoint(v8::Isolate*) [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+34: 0x102ad9980 node::InternalCallbackScope::Close() [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+35: 0x102ad93d4 node::InternalCallbackScope::~InternalCallbackScope() [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+36: 0x102bb2450 node::fs::FSReqPromise<node::AliasedBufferBase<double, v8::Float64Array>>::Resolve(v8::Local<v8::Value>) [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+37: 0x102bbf4ac node::fs::AfterStat(uv_fs_s*) [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+38: 0x102bb2ef4 node::MakeLibuvRequestCallback<uv_fs_s, void (*)(uv_fs_s*)>::Wrapper(uv_fs_s*) [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+39: 0x1037f9edc uv__work_done [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+40: 0x1037fd9b0 uv__async_io [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+41: 0x10380ff74 uv__io_poll [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+42: 0x1037fdf74 uv_run [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+43: 0x102ada46c node::SpinEventLoopInternal(node::Environment*) [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+44: 0x102bfdd80 node::NodeMainInstance::Run(node::ExitCode*, node::Environment*) [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+45: 0x102bfdb18 node::NodeMainInstance::Run() [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+46: 0x102b7f750 node::Start(int, char**) [/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node]
+47: 0x1849ec274 start [/usr/lib/dyld]
+/Users/Vaughan/Library/pnpm/vercel: line 13: 15380 Abort trap: 6           ""/Users/Vaughan/Library/pnpm/nodejs/22.8.0/bin/node"" ""$basedir/global/5/node_modules/vercel/dist/index.js"" ""$@""
+```","['TypeScript', 'JavaScript', 'HTML']",vercel link repo slow x trace glob issue issue cwd globbing mean search entire file system export async function getworkspace fs depth maxdepthtraverse cwd getworkspaceoption promiseworkspace depth return const workspacetype await detectworkspacemanager fs frameworklist workspacemanager workspacetype null const directorycontent await fsreaddir const childdirectorie directorycontentsfilter stat stattype dir return await promiseall childdirectoriesmapchilddirectory getworkspace fs fschdirchilddirectorypath depth depth cwd posixpathjoincwd childdirectorypath flat return type workspacetype workspacetype rootpath cwd globs repospackagejson toolspackagejson vercelpackagejson venvpackagejson archivepackagejson staticpackagejson run memory gcs x ms markcompact mb pool mb ms average mu current mu allocation failure scavenge succeed x ms markcompact mb pool mb ms average mu current mu allocation failure scavenge succeed js stacktrace fatal error ineffective markcompact near heap limit allocation fail javascript heap memory native stack trace xbb nodeoomerrorhandlerchar const voomdetail const usersvaughanlibrarypnpmnodejsbinnode xda vinternalvfatalprocessoutofmemoryvinternalisolate char const voomdetail const usersvaughanlibrarypnpmnodejsbinnode xfbb vinternalheapstack usersvaughanlibrarypnpmnodejsbinnode xffcc vinternalheapcollectgarbagevinternalallocationspace vinternalgarbagecollectionreason vgccallbackflagsoperator const usersvaughanlibrarypnpmnodejsbinnode xffc void heapbasestacksetmarkerandcallbackimplvinternalheapcollectgarbagevinternalallocationspace vinternalgarbagecollectionreason vgccallbackflagsheapbasestack void void const usersvaughanlibrarypnpmnodejsbinnode xbd pushallregistersanditeratestack usersvaughanlibrarypnpmnodejsbinnode xfef vinternalheapcollectgarbagevinternalallocationspace vinternalgarbagecollectionreason vgccallbackflag usersvaughanlibrarypnpmnodejsbinnode xff vinternalheapallocatorallocaterawwithlightretryslowpathint vinternalallocationtype vinternalallocationorigin vinternalallocationalignment usersvaughanlibrarypnpmnodejsbinnode xffcb vinternalheapallocatorallocaterawwithretryorfailslowpathint vinternalallocationtype vinternalallocationorigin vinternalallocationalignment usersvaughanlibrarypnpmnodejsbinnode xfca vinternalfactorynewfillerobjectint vinternalallocationalignment vinternalallocationtype vinternalallocationorigin usersvaughanlibrarypnpmnodejsbinnode xbd vinternalruntimeallocateinyounggenerationint unsigned long vinternalisolate usersvaughanlibrarypnpmnodejsbinnode xbc builtinswasmcentry usersvaughanlibrarypnpmnodejsbinnode xb builtinsstringaddchecknone usersvaughanlibrarypnpmnodejsbinnode xba xcaf xcf xc xce xc xc xcade xc xca xcb xcc x builtinspromisefulfillreactionjob usersvaughanlibrarypnpmnodejsbinnode xd builtinsrunmicrotasks usersvaughanlibrarypnpmnodejsbinnode xeaf builtinsjsrunmicrotasksentry usersvaughanlibrarypnpmnodejsbinnode xecc vinternalanonymous namespaceinvokevinternalisolate vinternalanonymous namespaceinvokeparam const usersvaughanlibrarypnpmnodejsbinnode xecccc vinternalanonymous namespaceinvokewithtrycatchvinternalisolate vinternalanonymous namespaceinvokeparam const usersvaughanlibrarypnpmnodejsbinnode xece vinternalexecutiontryrunmicrotasksvinternalisolate vinternalmicrotaskqueue usersvaughanlibrarypnpmnodejsbinnode xeeed vinternalmicrotaskqueuerunmicrotasksvinternalisolate usersvaughanlibrarypnpmnodejsbinnode xeef vinternalmicrotaskqueueperformcheckpointvisolate usersvaughanlibrarypnpmnodejsbinnode xad nodeinternalcallbackscopeclose usersvaughanlibrarypnpmnodejsbinnode xadd nodeinternalcallbackscopeinternalcallbackscope usersvaughanlibrarypnpmnodejsbinnode xbb nodefsfsreqpromisenodealiasedbufferbasedouble vfloatarrayresolvevlocalvvalue usersvaughanlibrarypnpmnodejsbinnode xbbfac nodefsafterstatuvfss usersvaughanlibrarypnpmnodejsbinnode xbbef nodemakelibuvrequestcallbackuvfss void uvfsswrapperuvfss usersvaughanlibrarypnpmnodejsbinnode xfedc uvworkdone usersvaughanlibrarypnpmnodejsbinnode xfdb uvasyncio usersvaughanlibrarypnpmnodejsbinnode xff uviopoll usersvaughanlibrarypnpmnodejsbinnode xfdf uvrun usersvaughanlibrarypnpmnodejsbinnode xadac nodespineventloopinternalnodeenvironment usersvaughanlibrarypnpmnodejsbinnode xbfdd nodenodemaininstancerunnodeexitcode nodeenvironment usersvaughanlibrarypnpmnodejsbinnode xbfdb nodenodemaininstancerun usersvaughanlibrarypnpmnodejsbinnode xbf nodestartint char usersvaughanlibrarypnpmnodejsbinnode xec start usrlibdyld usersvaughanlibrarypnpmvercel line abort trap usersvaughanlibrarypnpmnodejsbinnode basedirglobalnodemodulesverceldistindexjs typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+4,vercel,"[cli] Add telemetry for `vercel teams invite email1, email2`",Additional telemetry (and minimal test setup to run) for `vercel teams invite`,"['TypeScript', 'JavaScript', 'HTML']",cli add telemetry vercel team invite email email additional telemetry minimal test setup run vercel team invite typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+5,spring-data-mongodb,Add `@Meta(resolver = …)` attribute to customize `Meta` resolutions,"In the discussion of potential solutions for #4808, one idea was to add a `resolver` attribute to the `@Meta` annotation that could…
+- either take a SpEL expression returning a fully populated `Meta` instance to be used for the query execution
+- or refer to a named bean implementing a dedicated interface `MetaResolver.resolve(RepositoryMethodContext)` so that implementations get access to the full method
+
+I guess both could be supported at the same time, but we might end up adding only one of the options.","['Java', 'Kotlin', 'Dockerfile']",add metaresolver attribute customize meta resolution discussion potential solution idea add resolver attribute meta annotation spel expression return fully populated meta instance query execution refer name bean implement dedicated interface metaresolverresolverepositorymethodcontext implementation access method guess support time end add option typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+6,spring-data-mongodb,Cannot add litteral array with SetUnion,"Hello,
+
+Using SetOperators.SetUnion:
+
+`SetOperators.arrayAsSet(""aField"").union(""anotherField"")`
+
+How can I reproduce this expression that works fine in Mongo, when one field is a single value and needs to be wrapped in square brackets:
+
+`$setUnion: [ ""$arrayOfStringField"", [ ""$stringField"" ] ]`
+
+Thanks","['Java', 'Kotlin', 'Dockerfile']",add litteral array setunion hello setoperatorssetunion setoperatorsarrayassetafieldunionanotherfield reproduce expression work fine mongo field single value need wrap square bracket setunion arrayofstringfield stringfield thank typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+7,llama-models,Can llama3.2 vision accept no image?,"Hello, 
+
+thank you for thegreat work.
+I have been trying to expermint with the model and see how it works.
+
+My question is:
+Can I use llama3.2 vision to cover cases where there is no image?
+
+I tried set the value of the image variable to None or even delete it but I alawys get:
+`ValueError: Invalid input type. Must be a single image, a list of images, or a list of batches of images.`
+OR
+`ValueError: No image were provided, but there are image tokens in the prompt`
+
+
+",['Python'],llama vision accept image hello thank thegreat work try expermint model work question use llama vision cover case image try set value image variable delete alawys valueerror invalid input type single image list image list batch image valueerror image provide image tokens prompt typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+8,llama-models,lm_head weight of Llama3.2_3B_instruct model,"Hello, I find that theres no lm_head weight in model checkpoints（.safetensors）.
+How does model load weight for the Linear Layer of lm_head ?",['Python'],lmhead weight llamabinstruct model hello find s lmhead weight model checkpoint safetensor model load weight linear layer lmhead typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+9,commitlint,fix: Commitlint has path error when cloning proj onto a Linux Machine,"### Steps to Reproduce
+
+```bash
+1. Clone a project where Commitlint was initialized on a Windows machine.
+Here is my config file
+`commitlint.config.js`
+`module.exports = { extends: ['@commitlint/config-conventional'] }`
+
+
+2. Clone the project onto a Linux machine
+```
+
+
+### Current Behavior
+
+When committing, it successfully completes all steps then on the last step, I get an `errno` of `-2`
+
+> file:///home/username/Documents/Coding/projectDir/node_modules/@commitlint/cli/lib/cli.js:127
+>         throw err;
+>         ^
+> 
+> [Error: ENOENT: no such file or directory, open '/home/username/Documents/Coding/projectDir/\'] {
+>   errno: -2,
+>   code: 'ENOENT',
+>   syscall: 'open',
+>   path: '/home/username/Documents/Coding/projectDir/\\'
+> }
+> 
+
+### Expected Behavior
+
+It should properly commit
+
+### Affected packages
+
+- [ ] cli
+- [X] core
+- [ ] prompt
+- [ ] config-angular
+
+### Possible Solution
+
+I believe the issue is somehow those extra slashes at the end of the path are being added.
+
+### Context
+
+This has stopped me from commiting my code on my linux machine
+
+### commitlint --version
+
+^19.2.1
+
+### git --version
+
+V2.43.0
+
+### node --version
+
+v18.19.1","['TypeScript', 'JavaScript']",fix commitlint path error cloning proj linux machine step reproduce bash clone project commitlint initialize windows machine config file commitlintconfigjs moduleexport extend commitlintconfigconventional clone project linux machine current behavior commit successfully complete step step errno filehomeusernamedocumentscodingprojectdirnodemodulescommitlintclilibclijs throw err error enoent file directory open homeusernamedocumentscodingprojectdir errno code enoent syscall open path homeusernamedocumentscodingprojectdir expect behavior properly commit affect package cli x core prompt configangular possible solution believe issue extra slash end path add context stop commit code linux machine commitlint version git version v node version v typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+10,commitlint,fix: <title> type-enum inside RuleConfigSeverity.Error is not working.,"### Steps to Reproduce
+
+```bash
+import { RuleConfigSeverity, UserConfig } from '@commitlint/types';
+
+const Configuration: UserConfig = {
+   rules: {
+		""type-enum"": [
+			RuleConfigSeverity.Error,
+			""always"",
+			[
+				// Changes related to the build process or build tools.
+				""build"",
+				// Changes that introduce functional or behavioral modifications.
+				""change"",
+
+				// Miscellaneous tasks or maintenance chores that don't affect functionality.
+				""chore"",
+                  ]
+}
+
+export default Configuration;
+```
+
+
+### Current Behavior
+
+![Screenshot from 2024-08-10 18-57-26](https://github.com/user-attachments/assets/4c618e28-fbae-4400-99ef-23585dc39704)
+
+
+### Expected Behavior
+
+![Screenshot from 2024-08-10 18-58-13](https://github.com/user-attachments/assets/cdd3262d-9c5b-49c7-a8b9-aefa58ea08d5)
+
+
+### Affected packages
+
+- [X] cli
+- [ ] core
+- [X] prompt
+- [ ] config-angular
+
+### Possible Solution
+
+_No response_
+
+### Context
+
+_No response_
+
+### commitlint --version
+
+@commitlint/cli@19.4.0
+
+### git --version
+
+v2.46.0
+
+### node --version
+
+v20.16.0","['TypeScript', 'JavaScript']",fix title typeenum inside ruleconfigseverityerror work step reproduce bash import ruleconfigseverity userconfig commitlinttype const configuration userconfig rule typeenum ruleconfigseverityerror change related build process build tool build change introduce functional behavioral modification change miscellaneous task maintenance chore not affect functionality chore export default configuration current behavior screenshot httpsgithubcomuserattachmentsassetscefbaeefdc expect behavior screenshot httpsgithubcomuserattachmentsassetscdddcbcabaefaead affect package x cli core x prompt configangular possible solution response context response commitlint version commitlintcli git version v node version v typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+11,pgjdbc,"getSchemas with empty string for schemaPattern returns schemas, violating JDBC spec","**Describe the issue**
+The method getSchemas(String catalog, String schemaPattern) in pgjdbc's implementation of the interface DatabaseMetaData returns rows when I supply an empty string for the argument `schemaPattern`. However, no rows should be returned, because the schema name must match a non-null `schemaPattern` argument, per  java.sql interface [DatabaseMetaData](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/DatabaseMetaData.html#getSchemas(java.lang.String,java.lang.String)).
+
+**Driver Version?** 
+42.7.4
+
+**Java Version?**
+17
+
+**PostgreSQL Version?**
+13.13
+
+**To Reproduce**
+```java
+ResultSet rs = connection.getMetaData().getSchemas(null, """");
+if (rs.next()) {
+    System.out.println(""FOUND ROWS"");
+} else {
+    System.out.println(""no rows"");
+}
+```
+Output:
+```
+FOUND ROWS
+```
+
+**Expected behaviour**
+```
+no rows
+```
+Per java.sql interface [DatabaseMetaData](https://docs.oracle.com/en/java/javase/17/docs/api/java.sql/java/sql/DatabaseMetaData.html#getSchemas(java.lang.String,java.lang.String)) getSchemas(String catalog, String schemaPattern), if the parameter `schemaPattern` is not null, then it must match the schema name as it is stored in the database:
+> schemaPattern - a schema name; must match the schema name as it is stored in the database; null means schema name should not be used to narrow down the search.
+
+","['Java', 'Groovy', 'Shell']",getschema string schemapattern return schemas violate jdbc spec describe issue method getschemasstre catalog string schemapattern pgjdbc implementation interface databasemetadata return row supply string argument schemapattern row return schema match nonnull schemapattern argument javasql interface databasemetadatahttpsdocsoraclecomenjavajavasedocsapijavasqljavasqldatabasemetadatahtmlgetschemasjavalangstringjavalangstre driver version java version postgresql version reproduce java resultset rs connectiongetmetadatagetschemasnull rsnext systemoutprintlnfound row systemoutprintlnno row output find row expect behaviour row javasql interface databasemetadatahttpsdocsoraclecomenjavajavasedocsapijavasqljavasqldatabasemetadatahtmlgetschemasjavalangstringjavalangstre getschemasstre catalog string schemapattern parameter schemapattern null match schema store database schemapattern schema match schema store database null mean schema narrow search typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+12,systemd,memory.swap.max == max contrary to systemctl show/expectation,"### systemd version the issue has been seen with
+
+252
+
+### Used distribution
+
+Rocky 9
+
+### Linux kernel version used
+
+5.14.0-427.22.1.el9_4.x86_64
+
+### CPU architectures issue was seen on
+
+x86_64
+
+### Component
+
+systemd
+
+### Expected behaviour you didn't see
+
+Swap is disabled for all decedents of lsg.slice
+
+### Unexpected behaviour you saw
+
+Without `DisableControllers=memory` any decedents defaulted to `memory.swap.max` == `max` and the `lsg.slice` root had `memory.swap.max` == 0
+
+When adding `DisableControllers=memory` decedents no longer had access to the memory controller, however, `lsg.slice` root now has `memory.swap.max` set to `max`
+
+### Steps to reproduce the problem
+
+1. Create a slice
+```cat /etc/systemd/system/lsg.slice 
+Description=lsg Sliceca
+Documentation=man:systemd.special(7)
+DefaultDependencies=no
+Before=slices.target
+Requires=-.slice
+After=-.slice
+
+[Slice]
+DisableControllers=memory
+AllowedCPUs=8-19
+AllowedMemoryNodes=1-2
+MemorySwapMax=0
+```
+2. Assign a service unit the slice 
+```[root@lsg-04.dc3 ~]# cat /etc/systemd/system/lsg@.service 
+[Unit]
+Description=lsg
+After=...
+
+[Service]
+User=lsg
+Slice=lsg.slice
+
+WorkingDirectory=...
+ExecStartPre=...
+ExecStart=...
+
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+3. `systemctl daemon-reload`
+4. `systemctl restart lsg.slice` 
+5. One can observe lsg unit processes are swapping and in looking in `/sys/fs/cgroup/lsg.slice/memory.swap.max` we see `max`
+
+### Additional program output to the terminal or log subsystem illustrating the issue
+
+```sh
+# systemctl show lsg.slice |grep Swap
+MemorySwapMax=0
+
+# cat /sys/fs/cgroup/lsg.slice/memory.swap.max 
+max
+```
+","['C', 'Python', 'Shell']",memoryswapmax max contrary systemctl showexpectation systemd version issue see distribution rocky linux kernel version elx cpu architecture issue see x component systemd expect behaviour not swap disabled decedent lsgslice unexpected behaviour see disablecontrollersmemory decedent default memoryswapmax max lsgslice root memoryswapmax add disablecontrollersmemory decedent long access memory controller lsgslice root memoryswapmax set max step reproduce problem create slice cat etcsystemdsystemlsgslice descriptionlsg sliceca documentationmansystemdspecial defaultdependenciesno beforeslicestarget requiresslice afterslice slice disablecontrollersmemory allowedcpus allowedmemorynode memoryswapmax assign service unit slice rootlsgdc cat etcsystemdsystemlsgservice unit descriptionlsg service userlsg slicelsgslice workingdirectory execstartpre execstart restartalway install wantedbymultiusertarget systemctl daemonreload systemctl restart lsgslice observe lsg unit process swap look sysfscgrouplsgslicememoryswapmax max additional program output terminal log subsystem illustrate issue sh systemctl lsgslice grep swap memoryswapmax cat sysfscgrouplsgslicememoryswapmax max typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+13,systemd,systemd-machined can be crashed by calling the List varlink method,"### systemd version the issue has been seen with
+
+2053182bd10c9c1cff0af6ec70c42e1aad321e09
+
+### Used distribution
+
+Fedora 40
+
+### Linux kernel version used
+
+Linux version 6.10.12-200.fc40.x86_64
+
+### CPU architectures issue was seen on
+
+None
+
+### Component
+
+systemd-machined
+
+### Expected behaviour you didn't see
+
+_No response_
+
+### Unexpected behaviour you saw
+
+```sh
+varlink: New incoming connection.
+varlink: Connections of user 1000: 0 (of 576 max)
+varlink-14-14: Setting state idle-server
+varlink-14-14: Received message: {""method"":""io.systemd.Machine.List"",""parameters"":{""name"":""""}}
+varlink-14-14: Changing state idle-server → processing-method
+varlink-14-14: Sending message: {""error"":""org.varlink.service.InvalidParameter"",""parameters"":{""parameter"":""name""}}
+varlink-14-14: Changing state processing-method → processed-method
+Assertion 'm' failed at src/machine/machined-varlink.c:397, function list_machine_one(). Aborting.
+```
+```sh
+Assertion 'm' failed at src/machine/machined-varlink.c:397, function list_machine_one(). Aborting.
+#0  0x00007f8ef7dc4664 in __pthread_kill_implementation () from /lib64/libc.so.6
+#1  0x00007f8ef7d6bc4e in raise () from /lib64/libc.so.6
+#2  0x00007f8ef7d53902 in abort () from /lib64/libc.so.6
+#3  0x00007f8ef8993b1a in log_assert_failed (text=<optimized out>, file=<optimized out>, line=line@entry=397, func=<optimized out>) at ../src/basic/log.c:996
+#4  0x000000000052a643 in list_machine_one (link=0x51300000d400, m=<optimized out>, more=<optimized out>) at ../src/machine/machined-varlink.c:397
+#5  0x000000000052963d in vl_method_list (link=<optimized out>, parameters=<error reading variable: Cannot access memory at address 0x0>, 
+    flags=<optimized out>, userdata=0x50c000000040) at ../src/machine/machined-varlink.c:454
+#6  0x00007f8ef8ccb27c in varlink_dispatch_method (v=0x51300000d400) at ../src/libsystemd/sd-varlink/sd-varlink.c:1383
+#7  sd_varlink_process (v=0x51300000d400) at ../src/libsystemd/sd-varlink/sd-varlink.c:1456
+#8  0x00007f8ef8ce50f6 in defer_callback (s=s@entry=0x50e00000dda0, userdata=0x1709) at ../src/libsystemd/sd-varlink/sd-varlink.c:2880
+#9  0x00007f8ef8b58b30 in source_dispatch (s=0x50e00000dda0) at ../src/libsystemd/sd-event/sd-event.c:4260
+#10 0x00007f8ef8b5703a in sd_event_dispatch (e=e@entry=0x517000000080) at ../src/libsystemd/sd-event/sd-event.c:4849
+#11 0x00007f8ef8b5af9a in sd_event_run (e=0x517000000080, timeout=<optimized out>) at ../src/libsystemd/sd-event/sd-event.c:4910
+#12 0x00007f8ef8606a86 in bus_event_loop_with_idle (e=0x517000000080, bus=<optimized out>, name=<optimized out>, timeout=<optimized out>, 
+    check_idle=<optimized out>, userdata=<optimized out>) at ../src/shared/bus-util.c:147
+#13 0x000000000050ab4a in run (argc=<optimized out>, argv=<optimized out>) at ../src/machine/machined.c:346
+#14 main (argc=<optimized out>, argv=<optimized out>) at ../src/machine/machined.c:358
+```
+
+### Steps to reproduce the problem
+
+```sh
+printf '{""method"":""io.systemd.Machine.List"",""parameters"":{""name"":""""}}\0' | ncat -U /run/systemd/machine/io.systemd.Machine
+```
+
+### Additional program output to the terminal or log subsystem illustrating the issue
+
+_No response_","['C', 'Python', 'Shell']",systemdmachine crash call list varlink method systemd version issue see bdcccffafecceaade distribution fedora linux kernel version linux version fcx cpu architecture issue see component systemdmachine expect behaviour not response unexpected behaviour see sh varlink new incoming connection varlink connection user max varlink set state idleserver varlink receive message methodiosystemdmachinelistparametersname varlink change state idleserver processingmethod varlink send message errororgvarlinkserviceinvalidparameterparametersparametername varlink change state processingmethod processedmethod assertion fail srcmachinemachinedvarlinkc function listmachineone abort sh assertion fail srcmachinemachinedvarlinkc function listmachineone abort xfefdc pthreadkillimplementation liblibcso xfefdbce raise liblibcso xfefd abort liblibcso xfefba logassertfaile textoptimize fileoptimize linelineentry funcoptimize srcbasiclogc xa listmachineone linkxd moptimize moreoptimized srcmachinemachinedvarlinkc xd vlmethodlist linkoptimize parameterserror read variable access memory address x flagsoptimize userdataxc srcmachinemachinedvarlinkc xfefccbc varlinkdispatchmethod vxd srclibsystemdsdvarlinksdvarlinkc sdvarlinkprocess vxd srclibsystemdsdvarlinksdvarlinkc xfefcef defercallback ssentryxedda userdatax srclibsystemdsdvarlinksdvarlinkc xfefbb sourcedispatch sxedda srclibsystemdsdeventsdeventc xfefba sdeventdispatch eeentryx srclibsystemdsdeventsdeventc xfefbafa sdeventrun ex timeoutoptimize srclibsystemdsdeventsdeventc xfefa buseventloopwithidle ex busoptimize nameoptimize timeoutoptimize checkidleoptimize userdataoptimized srcsharedbusutilc xaba run argcoptimize argvoptimize srcmachinemachinedc main argcoptimized argvoptimize srcmachinemachinedc step reproduce problem sh printf methodiosystemdmachinelistparametersname ncat u runsystemdmachineiosystemdmachine additional program output terminal log subsystem illustrate issue response typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+14,beast,`static` global functions in headers interferes with use of modules,"Beast has some global functions in its headers (for instance, `clamp` in `boost/beast/core/detail/clamp.hpp`) that are declared `static`. `static` global functions are inaccessible to the second phase of name lookup in templates instantiated outside of the module. So for instance, if I have a module like
+
+```c++
+module;
+
+#include <boost/beast.hpp>
+#include <string_view>
+
+export module thingy;
+
+struct Thingy {
+    void f(std::string_view text, auto function) {
+        m_socket.async_write(boost::asio::buffer(text), function);
+    }
+private:
+    boost::beast::websocket::stream<boost::asio::ip::tcp::socket> m_socket;
+};
+```
+
+If a user attempts to call `Thingy::f`, they will get an error message like
+
+```console
+boost/beast/websocket/impl/write.hpp:238:35: fatal error: no matching function for call to 'clamp'
+  238 |             bytes_transferred_ += clamp(fh_.len);
+```
+
+This is because the `clamp` overloads are declared `static` (in the ""translation-unit local"" sense).
+
+Removing `static` would fix this problem. `clamp` is a set of function templates so it doesn't need any other change. I'm not sure if there are other functions that have a similar issue, but that's the only one I've run into so far.","['C++', 'C', 'CMake']",static global function header interfere use module beast global function header instance clamp boostbeastcoredetailclamphpp declare static static global function inaccessible second phase lookup template instantiate outside module instance module like c module include boostbeasthpp include stringview export module thingy struct thingy void fstdstringview text auto function msocketasyncwriteboostasiobuffertext function private boostbeastwebsocketstreamboostasioiptcpsocket msocket user attempt thingyf error message like console boostbeastwebsocketimplwritehpp fatal error matching function clamp bytestransferre clampfhlen clamp overload declare static translationunit local sense remove static fix problem clamp set function template not need change m sure function similar issue s ve run far typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+15,beast,basic_stream's (websocket::stream) async_connect compilation (type not convertible) failure introduced between Boost 1.85.0 and Boost 1.86.0,"### Version of Beast
+
+Boost 1.86.0
+
+### Steps necessary to reproduce the problem
+
+Sample code and [godbolt](https://gcc.godbolt.org/z/eMaz79Eb5) (yes I know this minimum example is contrived, but I don't ~~want to share awful code~~ know what's intellectual property and what isn't in this section of the codebase).
+
+```cpp
+#include <boost/beast/core.hpp>
+#include <boost/beast/websocket.hpp>
+
+namespace bb = boost::beast;
+
+extern boost::beast::websocket::stream<boost::beast::tcp_stream>* stream_;
+extern void onConnect(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type::endpoint_type);
+
+void onResolve(boost::beast::error_code ec, boost::asio::ip::tcp::resolver::results_type results) {
+    boost::beast::get_lowest_layer(*stream_).async_connect(
+        results, [](auto ec, auto endpoint) { onConnect(ec, endpoint); });
+}
+```
+
+Simple ""solution"" is to change `auto endpoint` to `boost::asio::ip::tcp::resolver::results_type::endpoint_type`... but I have absolutely no idea if this changes function generation / execution compared to what's intended; it appears as though this is a mixed Asio/Beast bug. Reduced to a few commits in Boost Asio / Boost Beast, specifically:
+
+* Boost Beast @ Boost 1.85 and Boost Asio @ Boost 1.85 are fine together.
+* Boost Asio introduced https://github.com/boostorg/asio/commit/6ce241c2bb4217c1f22f0b25f70af637dcf27e37 which caused (can also cause?) #2867
+* https://github.com/boostorg/beast/commit/1a2b85b7a4a5edd6ab5f3d84bdaa50e3b09bc471 was introduced via #2893 to fix #2867
+
+Asio had no release notes available in the Boost release, I suspect this is a case of ""Asio changed a default, Beast changed [to fix ambiguity in #2867 via #2893] but introduced a different behavior change by accident.""
+
+### All relevant compiler information
+
+I can't think of anything that is particularly relevant, but GCC 13.3 (or 14.2); `-std=c++26` is enough to trigger this.","['C++', 'C', 'CMake']",basicstreams websocketstream asyncconnect compilation type convertible failure introduce boost boost version beast boost step necessary reproduce problem sample code godbolthttpsgccgodboltorgzemazeb yes know minimum example contrive not want share awful code know s intellectual property not section codebase cpp include boostbeastcorehpp include boostbeastwebsockethpp namespace bb boostbeast extern boostbeastwebsocketstreamboostbeasttcpstream stream extern void onconnectboostbeasterrorcode ec boostasioiptcpresolverresultstypeendpointtype void onresolveboostbeasterrorcode ec boostasioiptcpresolverresultstype result boostbeastgetlowestlayerstreamasyncconnect result auto ec auto endpoint onconnectec endpoint simple solution change auto endpoint boostasioiptcpresolverresultstypeendpointtype absolutely idea change function generation execution compare s intend appear mix asiobeast bug reduce commit boost asio boost beast specifically boost beast boost boost asio boost fine boost asio introduce httpsgithubcomboostorgasiocommitcecbbcffbfafdcfe cause cause httpsgithubcomboostorgbeastcommitabbaaeddabfdbdaaebbc introduce fix asio release note available boost release suspect case asio change default beast change fix ambiguity introduce different behavior change accident relevant compiler information not think particularly relevant gcc stdc trigger typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+16,pandas,"BUG: ""python make.py html"" for documentation is giving error","### Pandas version checks
+
+- [X] I have checked that this issue has not already been reported.
+
+- [X] I have confirmed this bug exists on the [latest version](https://pandas.pydata.org/docs/whatsnew/index.html) of pandas.
+
+- [X] I have confirmed this bug exists on the [main branch](https://pandas.pydata.org/docs/dev/getting_started/install.html#installing-the-development-version-of-pandas) of pandas.
+
+
+### Reproducible Example
+
+```python
+python make.py html
+```
+
+
+### Issue Description
+
+While trying to [build documentation](https://pandas.pydata.org/docs/dev/development/contributing_documentation.html#building-the-documentation) for pandas-dev, the build fails with **Sphinx parallel build error**
+<img width=""1071"" alt=""Screenshot 2024-10-14 at 19 06 45"" src=""https://github.com/user-attachments/assets/9c1c2fc7-c313-43a3-a65d-f18f4099cba4"">
+
+
+[Stackoverflow Issue Reference](https://stackoverflow.com/questions/79062269/pandas-dev-local-setup-is-failing-when-building-documentation)
+
+
+
+### Expected Behavior
+
+The build should be successful and the docs should be built in local
+
+### Installed Versions
+
+<details>
+
+INSTALLED VERSIONS
+------------------
+commit                : 2a10e04a099d5f1633abcdfbb2dd9fdf09142f8d
+python                : 3.10.15
+python-bits           : 64
+OS                    : Darwin
+OS-release            : 23.6.0
+Version               : Darwin Kernel Version 23.6.0: Fri Jul  5 17:56:39 PDT 2024; root:xnu-10063.141.1~2/RELEASE_ARM64_T8122
+machine               : arm64
+processor             : arm
+byteorder             : little
+LC_ALL                : None
+LANG                  : en_US.UTF-8
+LOCALE                : en_US.UTF-8
+
+pandas                : 0+untagged.35606.g2a10e04
+numpy                 : 1.26.4
+dateutil              : 2.9.0
+pip                   : 24.2
+Cython                : 3.0.11
+sphinx                : 8.1.1
+IPython               : 8.28.0
+adbc-driver-postgresql: None
+adbc-driver-sqlite    : None
+bs4                   : 4.12.3
+blosc                 : None
+bottleneck            : 1.4.0
+fastparquet           : 2024.5.0
+fsspec                : 2024.9.0
+html5lib              : 1.1
+hypothesis            : 6.114.1
+gcsfs                 : 2024.9.0post1
+jinja2                : 3.1.4
+lxml.etree            : 5.3.0
+matplotlib            : 3.9.2
+numba                 : 0.60.0
+numexpr               : 2.10.1
+odfpy                 : None
+openpyxl              : 3.1.5
+psycopg2              : 2.9.9
+pymysql               : 1.4.6
+pyarrow               : 17.0.0
+pyreadstat            : 1.2.7
+pytest                : 8.3.3
+python-calamine       : None
+pytz                  : 2024.2
+pyxlsb                : 1.0.10
+s3fs                  : 2024.9.0
+scipy                 : 1.14.1
+sqlalchemy            : 2.0.35
+tables                : 3.10.1
+tabulate              : 0.9.0
+xarray                : 2024.9.0
+xlrd                  : 2.0.1
+xlsxwriter            : 3.2.0
+zstandard             : 0.23.0
+tzdata                : 2024.2
+qtpy                  : None
+pyqt5                 : None
+
+</details>
+","['Python', 'Cython', 'HTML']",bug python makepy html documentation give error panda version check x check issue report x confirm bug exist late versionhttpspandaspydataorgdocswhatsnewindexhtml panda x confirm bug exist main branchhttpspandaspydataorgdocsdevgettingstartedinstallhtmlinstallingthedevelopmentversionofpandas panda reproducible example python python makepy html issue description try build documentationhttpspandaspydataorgdocsdevdevelopmentcontributingdocumentationhtmlbuildingthedocumentation pandasdev build fail sphinx parallel build error img width altscreenshot srchttpsgithubcomuserattachmentsassetsccfccaadffcba stackoverflow issue referencehttpsstackoverflowcomquestionspandasdevlocalsetupisfailingwhenbuildingdocumentation expect behavior build successful doc build local instal version detail instal version commit aeadfabcdfbbddfdffd python pythonbit os darwin osrelease version darwin kernel version fri jul pdt rootxnureleasearmt machine arm processor arm byteorder little lcall lang enusutf locale enusutf panda untaggedgae numpy dateutil pip cython sphinx ipython adbcdriverpostgresql adbcdriversqlite bs blosc bottleneck fastparquet fsspec htmllib hypothesis gcsfs post jinja lxmletree matplotlib numba numexpr odfpy openpyxl psycopg pymysql pyarrow pyreadstat pyt pythoncalamine pytz pyxlsb sfs scipy sqlalchemy table tabulate xarray xlrd xlsxwriter zstandard tzdata qtpy pyqt detail typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+17,vim-fugitive,:Git command fails with an error `Can't open file syntax/diff.vim`,"I recently started experiencing a weird error when trying to run the :Git command:
+
+```
+Error detected while processing BufReadCmd Autocommands for ""fugitive://*""..function fugitive#BufReadCmd[8]..fugitive#BufReadStatus[28]..BufReadCmd Autocommands for ""fugitive://*""..function fu
+gitive#BufReadCmd[8]..fugitive#BufReadStatus[23]..FileType Autocommands for ""*""..Syntax Autocommands for ""*""..function <SNR>12_SynSet[26]..script /Users/***/.local/share/nvim/site/pack/pack
+er/start/vim-fugitive/syntax/fugitive.vim:                                                                                                                                                      
+line    8:                                                                                                                                                                                      
+E484: Can't open file syntax/diff.vim 
+```
+
+Will appreciate any help with that issue.
+
+Neovim v0.10.2
+Fugitive @d4877e54cef67f5af4f950935b1ade19ed6b7370
+MacOS",['Vim Script'],git command fail error not open file syntaxdiffvim recently start experience weird error try run git command error detect process bufreadcmd autocommand fugitivefunction fugitivebufreadcmdfugitivebufreadstatusbufreadcmd autocommand fugitivefunction fu gitivebufreadcmdfugitivebufreadstatusfiletype autocommand syntax autocommand function snrsynsetscript userslocalsharenvimsitepackpack erstartvimfugitivesyntaxfugitivevim line e not open file syntaxdiffvim appreciate help issue neovim v fugitive deceffaffbadeedb macos typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+18,prisma,Prisma client's `.$connect()` does not throw any error when database is not reachable on startup,"### Bug description
+
+I've encountered this issue in previous projects, but taught it was resolved in newer versions of Prisma. However, in my current project (using the latest Prisma version), I'm still facing the following:
+
+When I connect to the database at application startup using Prisma Client's `.$connect()` method, no error is thrown if the database is unreachable (either due to an incorrect host, port or the db is just down). The client simply proceeds without reporting the connection failure.
+
+To detect the issue, I have to test manually by initiating an empty transaction or a database query, which is when the error is actually thrown.
+
+### How to reproduce
+
+<!--
+1. Go to '...'
+2. Change '....'
+3. Run '....'
+4. See error
+-->
+1. Set up Prisma with an incorrect database host or port.
+2. Call `PrismaClient.$connect()` during app startup.
+3. Observe that no error is thrown until a query is made or a transaction is started.
+
+### Expected behavior
+
+The prisma client's `.$connect()` should throw an error if the database is not reachable
+
+### Prisma information
+
+<!-- Do not include your database credentials when sharing your Prisma schema! -->
+Schema file:
+```prisma
+generator client {
+  provider = ""prisma-client-js""
+  output   = ""./generated/client""
+}
+
+datasource db {
+  provider = ""mongodb""
+  url      = env(""DATABASE_URL"")
+}
+
+model User {
+  id        String   @id @default(auto()) @map(""_id"") @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+```
+
+App code:
+```typescript
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: configs.getOrThrow(""DATABASE_URL"") // mongodb://172.xx.xxx.x:27017/<db>?replicaSet=replicaSet1&directConnection=true
+    }
+  }
+});
+
+prisma.$connect()
+// program continues without any error
+
+// test connection by initiating a transaction since `.$connect()` doesn't throw any error when database is unreachable
+prisma.$transaction(async (_) => { })
+```
+
+
+### Environment & setup
+
+- OS:  Windows
+- Database: MongoDB
+- Node.js version: v22.2.0
+
+
+### Prisma Version
+
+from `package.json`:
+```json
+  ""dependencies"": {
+    ""@prisma/client"": ""^5.20.0""
+  },
+  ""devDependencies"": {
+    ""prisma"": ""^5.20.0""
+  }
+```
+","['TypeScript', 'JavaScript', 'Shell']",prisma client connect throw error database reachable startup bug description ve encounter issue previous project teach resolve new version prisma current project late prisma version m face follow connect database application startup prisma client connect method error throw database unreachable incorrect host port db client simply proceed report connection failure detect issue test manually initiate transaction database query error actually throw reproduce change run error set prisma incorrect database host port prismaclientconnect app startup observe error throw query transaction start expect behavior prisma client connect throw error database reachable prisma information include database credential share prisma schema schema file prisma generator client provider prismaclientjs output generatedclient datasource db provider mongodb url envdatabaseurl model user d string d defaultauto mapid dbobjectid createdat datetime defaultnow updatedat datetime updatedat app code typescript const prisma new prismaclient datasource db url configsgetorthrowdatabaseurl mongodbxxxxxxdbreplicasetreplicasetdirectconnectiontrue prismaconnect program continue error test connection initiate transaction connect not throw error database unreachable prismatransactionasync environment setup os windows database mongodb nodejs version v prisma version packagejson json dependency prismaclient devdependencie prisma typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+19,prisma,Inconsistent column data: Could not convert value false of the field `receiveemails` to type `Decimal`,"### Bug description
+
+We recently changed database from sqlserver to postgresql. 
+
+As column types are different between both prisma schemas, I had to convert the old schema to the new one.
+
+Our old columns in sqlserver were: 
+
+ReceiveEmails Boolean? 
+
+and the new column is:
+
+ReceiveEmails Decimal? @db.Decimal(1, 0) @map(""receiveemails"")
+
+when I run a findFirstOrThrow query, I receive this error:
+
+Inconsistent column data: Could not convert value false of the field `receiveemails` to type `Decimal`
+
+### How to reproduce
+
+We are running this code in aws lambdas and this is where the error happens.
+
+When I run the same code on my local (macOS) we get this error.
+
+
+### Expected behavior
+
+I expect to not receive an error and get the correct data back in the result
+
+### Prisma information
+
+```prisma
+model Members {
+  Id                           String             @id(map: ""members_2982385"") @db.VarChar(128) @map(""id"")
+  ReceiveEmails                Decimal?           @db.Decimal(1, 0) @map(""receiveemails"")
+  PersonId                     BigInt?            @map(""personid"")
+  Email                        String?            @db.VarChar(256) @map(""email"")
+}
+```
+
+```ts
+await prisma.members.findFirstOrThrow({
+  where: {
+    Id: id
+  }
+})
+```
+
+
+### Environment & setup
+
+- OS: MacOs
+- Database: PostgreSQL
+- Node.js version: 18.17.0
+
+
+### Prisma Version
+
+```
+9.6.7
+```
+","['TypeScript', 'JavaScript', 'Shell']",inconsistent column datum convert value false field receiveemail type decimal bug description recently change database sqlserver postgresql column type different prisma schemas convert old schema new old column sqlserver receiveemail boolean new column receiveemail decimal dbdecimal mapreceiveemail run findfirstorthrow query receive error inconsistent column datum convert value false field receiveemail type decimal reproduce run code aw lambda error happen run code local macos error expect behavior expect receive error correct datum result prisma information prisma model member d string idmap member dbvarchar mapid receiveemail decimal dbdecimal mapreceiveemail personid bigint mappersonid email string dbvarchar mapemail ts await prismamembersfindfirstorthrow d d environment setup os macos database postgresql nodejs version prisma version typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
+20,stripe-node,Create customer portal session with flow subscription_update - property 'subscription_update' does not exist in type 'FlowData',"### Describe the bug
+
+TS complains about missing property 'subscription_update' on interface FlowData
+
+### To Reproduce
+
+I want customers to be able to upgrade their subscriptions, so I followed the docs to create a portal session: https://docs.stripe.com/api/customer_portal/sessions/create
+
+I try to call the function like this:
+````
+                Stripe.billingPortal.sessions.create({
+                    customer: req.session.user.customerId,
+                    return_url: `${domain}account/${req.session.user.id}`,
+                    flow_data: {
+                        type: 'subscription_update' as stripe.BillingPortal.SessionCreateParams.FlowData.Type,
+                        subscription_update: {
+                            subscription: stripeSubscriptionId,
+                        }
+                    }
+                }).then((stripeSession) => {
+                    res.redirect(303, stripeSession.url);
+                });
+````
+
+But I get a TS error:
+![image](https://github.com/user-attachments/assets/dafd304c-8bf9-4612-9f64-6257a4b9b3dc)
+
+And in the FlowData interface I can see there is no property 'subscription_update':
+![image](https://github.com/user-attachments/assets/20446e58-5ddf-4175-a572-a9d17291c3e7)
+
+I can get around the error by declaring the flow data object separately, but it's messier than passing the object in directly:
+````
+                const flow_data = {
+                    type: 'subscription_update' as stripe.BillingPortal.SessionCreateParams.FlowData.Type,
+                    subscription_update: {
+                        subscription: stripeSubscriptionId,
+                    }
+                };
+                Stripe.billingPortal.sessions.create({
+                    customer: req.session.user.customerId,
+                    return_url: `${domain}account/${req.session.user.id}`,
+                    flow_data
+                }).then((stripeSession) => {
+                    res.redirect(303, stripeSession.url);
+                });
+````
+
+
+### Expected behavior
+
+Property 'subscription_update' should exist on interface FlowData.
+
+### Code snippets
+
+_No response_
+
+### OS
+
+Windows 11
+
+### Node version
+
+v20.11.0
+
+### Library version
+
+1.21.6
+
+### API version
+
+2024-09-30.acacia
+
+### Additional context
+
+_No response_","['TypeScript', 'JavaScript', 'Makefile']",create customer portal session flow subscriptionupdate property subscriptionupdate exist type flowdata describe bug ts complain miss property subscriptionupdate interface flowdata reproduce want customer able upgrade subscription follow doc create portal session httpsdocsstripecomapicustomerportalsessionscreate try function like stripebillingportalsessionscreate customer reqsessionusercustomerid returnurl domainaccountreqsessionuserid flowdata type subscriptionupdate stripebillingportalsessioncreateparamsflowdatatype subscriptionupdate subscription stripesubscriptionid thenstripesession resredirect stripesessionurl ts error imagehttpsgithubcomuserattachmentsassetsdafdcbffabbdc flowdata interface property subscriptionupdate imagehttpsgithubcomuserattachmentsassetseddfaadce error declare flow datum object separately messy pass object directly const flowdata type subscriptionupdate stripebillingportalsessioncreateparamsflowdatatype subscriptionupdate subscription stripesubscriptionid stripebillingportalsessionscreate customer reqsessionusercustomerid returnurl domainaccountreqsessionuserid flowdata thenstripesession resredirect stripesessionurl expect behavior property subscriptionupdate exist interface flowdata code snippet response os windows node version v library version api version acacia additional context response typescript shell nsis typescript shell nsis typescript shell nsis typescript javascript html typescript javascript html java kotlin dockerfile java kotlin dockerfile python python typescript javascript typescript javascript java groovy shell c python shell c python shell c c cmake c c cmake python cython html vim script typescript javascript shell typescript javascript shell typescript javascript makefile language dtype object
