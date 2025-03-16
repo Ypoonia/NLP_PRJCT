@@ -55,15 +55,12 @@ OpenSox is a powerful tool designed to recommend top 3 GitHub issues for develop
 
 ## Example
 ```bash
-python main.py Python
+python main.py  Python
 ```
 **Output:**
 1. Memory Leak Handling
 2. Import Errors
 3. Dependency Conflicts
-
-## Contribution
-Feel free to contribute by creating pull requests or reporting issues.
 
 ## License
 This project is licensed under the MIT License.
